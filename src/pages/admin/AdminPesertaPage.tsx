@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw, Search, User, MapPin, GraduationCap, Phone, Calendar } from 'lucide-react';
+import { RefreshCw, Search, User, MapPin, GraduationCap, Phone } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getHasilLabel } from '@/lib/helpers';
 
