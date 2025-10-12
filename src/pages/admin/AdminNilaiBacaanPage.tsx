@@ -92,7 +92,7 @@ export const AdminNilaiBacaanPage = () => {
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Kelola Nilai Bacaan</h1>
 
       <Card className="p-4 mb-6">
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <Select value={selectedPeriode} onValueChange={setSelectedPeriode}>
               <SelectTrigger>
@@ -119,7 +119,8 @@ export const AdminNilaiBacaanPage = () => {
         </div>
       </Card>
 
-      <Card>
+      {/* Desktop Table View */}
+      <Card className="hidden md:block">
         <ScrollArea className="h-[600px]">
           <Table>
             <TableHeader>
@@ -159,6 +160,47 @@ export const AdminNilaiBacaanPage = () => {
           </Table>
         </ScrollArea>
       </Card>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {filteredNilai.length === 0 ? (
+          <Card className="p-8 text-center">
+            <p className="text-gray-500">Tidak ada data nilai bacaan</p>
+          </Card>
+        ) : (
+          filteredNilai.map((nilai) => (
+            <Card key={nilai.id} className="p-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{nilai.peserta?.nama || '-'}</h3>
+                    <p className="text-sm text-gray-600">Peserta</p>
+                  </div>
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    nilai.nilai === 'lulus' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {nilai.nilai}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-sm text-gray-500">Guru</p>
+                    <p className="font-medium">{nilai.guru?.nama || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Materi</p>
+                    <p className="font-medium">{nilai.materi || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Tanggal</p>
+                    <p className="font-medium">{formatDate(nilai.created_at)}</p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
     </div>
   );
 };

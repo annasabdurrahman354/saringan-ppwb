@@ -21,6 +21,7 @@ export const formatDate = (date: string | null): string => {
 
 export const getHasilLabel = (hasil: string): string => {
   const labels: Record<string, string> = {
+    'aktif': 'Aktif',
     'lulus': 'Lulus',
     'tidak_lulus': 'Tidak Lulus',
     'perlu_musyawarah': 'Perlu Musyawarah',

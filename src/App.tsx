@@ -14,7 +14,6 @@ import { AdminNilaiBacaanPage } from './pages/admin/AdminNilaiBacaanPage';
 import { AdminNilaiPenyampaianPage } from './pages/admin/AdminNilaiPenyampaianPage';
 import { AdminUserPage } from './pages/admin/AdminUserPage';
 import { Toaster } from './components/ui/toaster';
-import './App.css';
 
 function App() {
   return (

@@ -48,7 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data, error } = await supabase
         .from('saringan_user')
         .select('*')
-        .eq('auth_id', authId)
+        .eq('id', authId)
         .eq('aktif', true)
         .maybeSingle();
 
@@ -74,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('Username tidak ditemukan atau tidak aktif');
     }
 
-    const email = `${username}@saringan.ppwb.my.id`;
+    const email = `${username}@ppwb.my.id`;
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,

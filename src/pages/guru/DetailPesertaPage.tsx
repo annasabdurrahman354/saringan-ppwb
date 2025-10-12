@@ -87,6 +87,18 @@ export const DetailPesertaPage = () => {
     );
   };
 
+  // Helper function to safely parse JSON strings to arrays
+  const parseKekuranganArray = (jsonString: string | string[] | null | undefined): string[] => {
+    if (!jsonString) return [];
+    if (Array.isArray(jsonString)) return jsonString;
+    try {
+      const parsed = JSON.parse(jsonString);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center gap-4 mb-6">
@@ -305,41 +317,41 @@ export const DetailPesertaPage = () => {
                       <p className="text-sm text-gray-500">Materi</p>
                       <p className="font-medium">{nilai.materi || '-'}</p>
                     </div>
-                    {nilai.kekurangan_tajwid && nilai.kekurangan_tajwid.length > 0 && (
+                    {parseKekuranganArray(nilai.kekurangan_tajwid).length > 0 && (
                       <div>
                         <p className="text-sm text-gray-500 mb-2">Kekurangan Tajwid</p>
                         <div className="flex flex-wrap gap-2">
-                          {nilai.kekurangan_tajwid.map((k, i) => (
+                          {parseKekuranganArray(nilai.kekurangan_tajwid).map((k, i) => (
                             <Badge key={i} variant="outline">{k}</Badge>
                           ))}
                         </div>
                       </div>
                     )}
-                    {nilai.kekurangan_khusus && nilai.kekurangan_khusus.length > 0 && (
+                    {parseKekuranganArray(nilai.kekurangan_khusus).length > 0 && (
                       <div>
                         <p className="text-sm text-gray-500 mb-2">Kekurangan Khusus</p>
                         <div className="flex flex-wrap gap-2">
-                          {nilai.kekurangan_khusus.map((k, i) => (
+                          {parseKekuranganArray(nilai.kekurangan_khusus).map((k, i) => (
                             <Badge key={i} variant="outline">{k}</Badge>
                           ))}
                         </div>
                       </div>
                     )}
-                    {nilai.kekurangan_keserasian && nilai.kekurangan_keserasian.length > 0 && (
+                    {parseKekuranganArray(nilai.kekurangan_keserasian).length > 0 && (
                       <div>
                         <p className="text-sm text-gray-500 mb-2">Kekurangan Keserasian</p>
                         <div className="flex flex-wrap gap-2">
-                          {nilai.kekurangan_keserasian.map((k, i) => (
+                          {parseKekuranganArray(nilai.kekurangan_keserasian).map((k, i) => (
                             <Badge key={i} variant="outline">{k}</Badge>
                           ))}
                         </div>
                       </div>
                     )}
-                    {nilai.kekurangan_kelancaran && nilai.kekurangan_kelancaran.length > 0 && (
+                    {parseKekuranganArray(nilai.kekurangan_kelancaran).length > 0 && (
                       <div>
                         <p className="text-sm text-gray-500 mb-2">Kekurangan Kelancaran</p>
                         <div className="flex flex-wrap gap-2">
-                          {nilai.kekurangan_kelancaran.map((k, i) => (
+                          {parseKekuranganArray(nilai.kekurangan_kelancaran).map((k, i) => (
                             <Badge key={i} variant="outline">{k}</Badge>
                           ))}
                         </div>

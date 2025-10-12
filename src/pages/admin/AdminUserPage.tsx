@@ -188,7 +188,7 @@ export const AdminUserPage = () => {
       </div>
 
       <Card className="p-4 mb-6">
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
@@ -198,9 +198,10 @@ export const AdminUserPage = () => {
               className="pl-10"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant={roleFilter === 'all' ? 'default' : 'outline'}
+              size="sm"
               onClick={() => setRoleFilter('all')}
               className={roleFilter === 'all' ? 'bg-green-700' : ''}
             >
@@ -208,6 +209,7 @@ export const AdminUserPage = () => {
             </Button>
             <Button
               variant={roleFilter === 'guru' ? 'default' : 'outline'}
+              size="sm"
               onClick={() => setRoleFilter('guru')}
               className={roleFilter === 'guru' ? 'bg-green-700' : ''}
             >
@@ -215,6 +217,7 @@ export const AdminUserPage = () => {
             </Button>
             <Button
               variant={roleFilter === 'admin' ? 'default' : 'outline'}
+              size="sm"
               onClick={() => setRoleFilter('admin')}
               className={roleFilter === 'admin' ? 'bg-green-700' : ''}
             >
@@ -224,7 +227,8 @@ export const AdminUserPage = () => {
         </div>
       </Card>
 
-      <Card>
+      {/* Desktop Table View */}
+      <Card className="hidden md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -284,6 +288,55 @@ export const AdminUserPage = () => {
           </TableBody>
         </Table>
       </Card>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {filteredUsers.length === 0 ? (
+          <Card className="p-8 text-center">
+            <p className="text-gray-500">Tidak ada data user</p>
+          </Card>
+        ) : (
+          filteredUsers.map((user) => (
+            <Card key={user.id} className="p-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{user.nama}</h3>
+                    <p className="text-sm text-gray-600">{user.username}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => handleOpenDialog(user)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        setDeletingUser(user);
+                        setDeleteDialogOpen(true);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className={`px-2 py-1 rounded text-sm ${
+                    user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {user.role}
+                  </span>
+                  <span className={`px-2 py-1 rounded text-sm ${
+                    user.aktif ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {user.aktif ? 'Aktif' : 'Tidak Aktif'}
+                  </span>
+                </div>
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>

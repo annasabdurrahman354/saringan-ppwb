@@ -96,7 +96,7 @@ export const AdminNilaiPenyampaianPage = () => {
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Kelola Nilai Penyampaian</h1>
 
       <Card className="p-4 mb-6">
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <Select value={selectedPeriode} onValueChange={setSelectedPeriode}>
               <SelectTrigger>
@@ -123,7 +123,8 @@ export const AdminNilaiPenyampaianPage = () => {
         </div>
       </Card>
 
-      <Card>
+      {/* Desktop Table View */}
+      <Card className="hidden lg:block">
         <ScrollArea className="h-[600px]">
           <Table>
             <TableHeader>
@@ -165,6 +166,64 @@ export const AdminNilaiPenyampaianPage = () => {
           </Table>
         </ScrollArea>
       </Card>
+
+      {/* Mobile Card View */}
+      <div className="lg:hidden space-y-4">
+        {filteredNilai.length === 0 ? (
+          <Card className="p-8 text-center">
+            <p className="text-gray-500">Tidak ada data nilai penyampaian</p>
+          </Card>
+        ) : (
+          filteredNilai.map((nilai) => (
+            <Card key={nilai.id} className="p-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{nilai.peserta?.nama || '-'}</h3>
+                    <p className="text-sm text-gray-600">Peserta</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-lg">{calculateAverage(nilai)}</p>
+                    <p className="text-sm text-gray-500">Rata-rata</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-sm text-gray-500">Guru</p>
+                    <p className="font-medium">{nilai.guru?.nama || '-'}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Makna</p>
+                      <p className="font-medium">{nilai.nilai_makna}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Keterangan</p>
+                      <p className="font-medium">{nilai.nilai_keterangan}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Penjelasan</p>
+                      <p className="font-medium">{nilai.nilai_penjelasan}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Pemahaman</p>
+                      <p className="font-medium">{nilai.nilai_pemahaman}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Materi</p>
+                    <p className="font-medium">{nilai.materi || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Tanggal</p>
+                    <p className="font-medium">{formatDate(nilai.created_at)}</p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
     </div>
   );
 };
