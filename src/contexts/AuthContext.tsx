@@ -22,7 +22,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchUserProfile(session.user.id);
+        fetchUserProfile(session.user.email);
       } else {
         setLoading(false);
       }
@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       (async () => {
         setUser(session?.user ?? null);
         if (session?.user) {
-          await fetchUserProfile(session.user.id);
+          await fetchUserProfile(session.user.email);
         } else {
           setUserProfile(null);
           setLoading(false);
@@ -43,12 +43,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchUserProfile = async (authId: string) => {
+  const fetchUserProfile = async (email: string) => {
+    const username = email.split("@")[0]
     try {
       const { data, error } = await supabase
         .from('saringan_user')
         .select('*')
-        .eq('id', authId)
+        .eq('username', username)
         .eq('aktif', true)
         .maybeSingle();
 

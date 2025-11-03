@@ -116,6 +116,7 @@ export const AdminPesertaPage = () => {
             daerah_kiriman: student.daerah_kiriman || null,
             pendidikan: student.pendidikan || null,
             jurusan: student.jurusan || null,
+            pembinaan: false
           };
 
           const { data: existingData } = await supabase
