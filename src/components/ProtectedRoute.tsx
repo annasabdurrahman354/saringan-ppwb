@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ProtectedRouteProps {
@@ -7,6 +7,7 @@ interface ProtectedRouteProps {
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) => {
   const { user, userProfile, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -17,7 +18,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) 
   }
 
   if (!user || !userProfile) {
-    return <Navigate to="/" replace />;
+    // Preserve the intended destination in location state
+    return <Navigate to="/" state={{ from: location }} replace />;
   }
 
   if (!allowedRoles.includes(userProfile.role)) {
