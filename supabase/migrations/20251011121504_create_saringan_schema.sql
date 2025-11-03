@@ -380,6 +380,125 @@ BEGIN
 END;
 $$;
 
+
+-- Function: hapus_nilai_bacaan
+CREATE OR REPLACE FUNCTION public.hapus_nilai_bacaan(
+  _id uuid
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY definer
+AS $$
+DECLARE
+  deleted_row record;
+  peserta_row record;
+  _peserta_id uuid;
+  penyampaian_latest jsonb;
+  bacaan_latest jsonb;
+  lulus_count int := 0;
+  tidak_count int := 0;
+  hasil_penyampaian text;
+  hasil_bacaan text;
+  final_hasil text;
+  final_hasil_numeric numeric;
+BEGIN
+  -- Hapus data dan ambil peserta_id
+  DELETE FROM saringan_nilai_bacaan
+  WHERE id = _id
+  RETURNING * INTO deleted_row;
+
+  IF deleted_row IS NULL THEN
+    RAISE EXCEPTION 'Data nilai bacaan tidak ditemukan';
+  END IF;
+
+  _peserta_id := deleted_row.peserta_id;
+
+  -- Hitung ulang hasil penyampaian
+  SELECT jsonb_agg(t) INTO penyampaian_latest
+  FROM (
+    SELECT DISTINCT ON (guru_id) guru_id, nilai_makna, nilai_keterangan, nilai_penjelasan, nilai_pemahaman, created_at
+    FROM saringan_nilai_penyampaian
+    WHERE peserta_id = _peserta_id
+    ORDER BY guru_id, created_at DESC
+  ) t;
+
+  IF penyampaian_latest IS NULL OR jsonb_array_length(penyampaian_latest) = 0 THEN
+    hasil_penyampaian := 'belum_pengetesan';
+  ELSE
+    SELECT avg((( (e->>'nilai_makna')::numeric + (e->>'nilai_keterangan')::numeric + (e->>'nilai_penjelasan')::numeric + (e->>'nilai_pemahaman')::numeric)/4 ))
+    INTO final_hasil_numeric
+    FROM jsonb_array_elements(penyampaian_latest) e;
+    
+    IF final_hasil_numeric >= 70 THEN
+      hasil_penyampaian := 'lulus';
+    ELSE
+      hasil_penyampaian := 'tidak_lulus';
+    END IF;
+  END IF;
+
+  -- Hitung ulang hasil bacaan
+  SELECT jsonb_agg(t) INTO bacaan_latest
+  FROM (
+    SELECT DISTINCT ON (guru_id) guru_id, nilai, created_at
+    FROM saringan_nilai_bacaan
+    WHERE peserta_id = _peserta_id
+    ORDER BY guru_id, created_at DESC
+  ) t;
+
+  IF bacaan_latest IS NULL OR jsonb_array_length(bacaan_latest) = 0 THEN
+    hasil_bacaan := 'belum_pengetesan';
+  ELSE
+    SELECT
+      COALESCE(COUNT(*) FILTER (WHERE elem->>'nilai' = 'lulus'),0)::int,
+      COALESCE(COUNT(*) FILTER (WHERE elem->>'nilai' <> 'lulus'),0)::int
+    INTO lulus_count, tidak_count
+    FROM jsonb_array_elements(bacaan_latest) elem;
+
+    IF lulus_count > tidak_count THEN
+      hasil_bacaan := 'lulus';
+    ELSIF tidak_count > lulus_count THEN
+      hasil_bacaan := 'tidak_lulus';
+    ELSE
+      hasil_bacaan := 'perlu_musyawarah';
+    END IF;
+  END IF;
+
+  -- Tentukan hasil final
+  IF hasil_penyampaian = 'belum_pengetesan' AND hasil_bacaan = 'belum_pengetesan' THEN
+    final_hasil := 'belum_pengetesan';
+  ELSIF hasil_penyampaian = 'lulus' AND hasil_bacaan = 'lulus' THEN
+    final_hasil := 'lulus';
+  ELSIF hasil_penyampaian = 'lulus' AND hasil_bacaan = 'tidak_lulus' THEN
+    final_hasil := 'tidak_lulus';
+  ELSIF hasil_penyampaian = 'tidak_lulus' AND hasil_bacaan = 'lulus' THEN
+    final_hasil := 'lulus';
+  ELSIF hasil_penyampaian = 'tidak_lulus' AND hasil_bacaan = 'tidak_lulus' THEN
+    final_hasil := 'tidak_lulus';
+  ELSIF hasil_penyampaian = 'lulus' AND hasil_bacaan = 'perlu_musyawarah' THEN
+    final_hasil := 'perlu_musyawarah';
+  ELSIF hasil_penyampaian = 'tidak_lulus' AND hasil_bacaan = 'perlu_musyawarah' THEN
+    final_hasil := 'tidak_lulus';
+  ELSIF hasil_bacaan = 'belum_pengetesan' THEN
+    final_hasil := 'belum_pengetesan_bacaan';
+  ELSIF hasil_penyampaian = 'belum_pengetesan' THEN
+    final_hasil := 'belum_pengetesan_penyampaian';
+  ELSE
+    final_hasil := 'perlu_musyawarah';
+  END IF;
+
+  -- Update peserta
+  UPDATE saringan_peserta 
+  SET hasil_tes_penyampaian = hasil_penyampaian, 
+      hasil_tes_bacaan = hasil_bacaan, 
+      hasil_tes = final_hasil,
+      updated_at = NOW()
+  WHERE id = _peserta_id 
+  RETURNING * INTO peserta_row;
+
+  RETURN jsonb_build_object('deleted', to_jsonb(deleted_row), 'peserta', to_jsonb(peserta_row));
+END;
+$$;
+
+
 -- Function: simpan_nilai_penyampaian
 CREATE OR REPLACE FUNCTION public.simpan_nilai_penyampaian(
   _peserta_id uuid,
@@ -405,7 +524,7 @@ DECLARE
   hasil_penyampaian text;
   hasil_bacaan text;
   final_hasil text;
-  e jsonb;
+  nilai_elem jsonb;  -- Renamed to avoid conflict
 BEGIN
   INSERT INTO saringan_nilai_penyampaian(
     peserta_id, guru_id, materi, 
@@ -430,9 +549,10 @@ BEGIN
   IF penyampaian_latest IS NULL OR jsonb_array_length(penyampaian_latest) = 0 THEN
     hasil_penyampaian := 'belum_pengetesan';
   ELSE
-    SELECT avg((( (e->>'nilai_makna')::numeric + (e->>'nilai_keterangan')::numeric + (e->>'nilai_penjelasan')::numeric + (e->>'nilai_pemahaman')::numeric)/4  ))
+    -- Use a different alias in the SELECT query
+    SELECT avg((( (x->>'nilai_makna')::numeric + (x->>'nilai_keterangan')::numeric + (x->>'nilai_penjelasan')::numeric + (x->>'nilai_pemahaman')::numeric)/4  ))
     INTO avg_val
-    FROM jsonb_array_elements(penyampaian_latest) e;
+    FROM jsonb_array_elements(penyampaian_latest) x;
 
     IF avg_val >= 70 THEN
       hasil_penyampaian := 'lulus';
@@ -454,8 +574,9 @@ BEGIN
   ELSE
     lulus_count := 0;
     tidak_count := 0;
-    FOR e IN SELECT jsonb_array_elements(bacaan_latest) LOOP
-      IF (e->>'nilai') = 'lulus' THEN
+    -- Use the declared variable in FOR loop
+    FOR nilai_elem IN SELECT jsonb_array_elements(bacaan_latest) LOOP
+      IF (nilai_elem->>'nilai') = 'lulus' THEN
         lulus_count := lulus_count + 1;
       ELSE
         tidak_count := tidak_count + 1;
@@ -478,7 +599,7 @@ BEGIN
   ELSIF hasil_penyampaian = 'lulus' AND hasil_bacaan = 'tidak_lulus' THEN
     final_hasil := 'tidak_lulus';
   ELSIF hasil_penyampaian = 'tidak_lulus' AND hasil_bacaan = 'lulus' THEN
-    final_hasil := 'lulus';
+    final_hasil := 'tidak_lulus';
   ELSIF hasil_penyampaian = 'tidak_lulus' AND hasil_bacaan = 'tidak_lulus' THEN
     final_hasil := 'tidak_lulus';
   ELSIF hasil_penyampaian = 'lulus' AND hasil_bacaan = 'perlu_musyawarah' THEN
@@ -502,5 +623,124 @@ BEGIN
   RETURNING * INTO peserta_row;
 
   RETURN jsonb_build_object('nilai', to_jsonb(ins_row), 'peserta', to_jsonb(peserta_row));
+END;
+$$;
+
+-- Function: hapus_nilai_penyampaian
+CREATE OR REPLACE FUNCTION public.hapus_nilai_penyampaian(
+  _id uuid
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY definer
+AS $$
+DECLARE
+  deleted_row record;
+  peserta_row record;
+  _peserta_id uuid;
+  avg_val numeric;
+  penyampaian_latest jsonb;
+  bacaan_latest jsonb;
+  lulus_count int := 0;
+  tidak_count int := 0;
+  hasil_penyampaian text;
+  hasil_bacaan text;
+  final_hasil text;
+  nilai_elem jsonb;  -- Renamed to avoid conflict
+BEGIN
+  DELETE FROM saringan_nilai_penyampaian
+  WHERE id = _id
+  RETURNING * INTO deleted_row;
+
+  IF deleted_row IS NULL THEN
+    RAISE EXCEPTION 'Data nilai penyampaian tidak ditemukan';
+  END IF;
+
+  _peserta_id := deleted_row.peserta_id;
+
+  SELECT jsonb_agg(t) INTO penyampaian_latest
+  FROM (
+    SELECT DISTINCT ON (guru_id) guru_id, nilai_makna, nilai_keterangan, nilai_penjelasan, nilai_pemahaman, created_at
+    FROM saringan_nilai_penyampaian
+    WHERE peserta_id = _peserta_id
+    ORDER BY guru_id, created_at DESC
+  ) t;
+
+  IF penyampaian_latest IS NULL OR jsonb_array_length(penyampaian_latest) = 0 THEN
+    hasil_penyampaian := 'belum_pengetesan';
+  ELSE
+    -- Use a different alias in the SELECT query
+    SELECT avg((( (x->>'nilai_makna')::numeric + (x->>'nilai_keterangan')::numeric + (x->>'nilai_penjelasan')::numeric + (x->>'nilai_pemahaman')::numeric)/4  ))
+    INTO avg_val
+    FROM jsonb_array_elements(penyampaian_latest) x;
+
+    IF avg_val >= 70 THEN
+      hasil_penyampaian := 'lulus';
+    ELSE
+      hasil_penyampaian := 'tidak_lulus';
+    END IF;
+  END IF;
+
+  SELECT jsonb_agg(t) INTO bacaan_latest
+  FROM (
+    SELECT DISTINCT ON (guru_id) guru_id, nilai, created_at
+    FROM saringan_nilai_bacaan
+    WHERE peserta_id = _peserta_id
+    ORDER BY guru_id, created_at DESC
+  ) t;
+
+  IF bacaan_latest IS NULL OR jsonb_array_length(bacaan_latest) = 0 THEN
+    hasil_bacaan := 'belum_pengetesan';
+  ELSE
+    lulus_count := 0;
+    tidak_count := 0;
+    -- Use the declared variable in FOR loop
+    FOR nilai_elem IN SELECT jsonb_array_elements(bacaan_latest) LOOP
+      IF (nilai_elem->>'nilai') = 'lulus' THEN
+        lulus_count := lulus_count + 1;
+      ELSE
+        tidak_count := tidak_count + 1;
+      END IF;
+    END LOOP;
+    
+    IF lulus_count > tidak_count THEN
+      hasil_bacaan := 'lulus';
+    ELSIF tidak_count > lulus_count THEN
+      hasil_bacaan := 'tidak_lulus';
+    ELSE
+      hasil_bacaan := 'perlu_musyawarah';
+    END IF;
+  END IF;
+
+  IF hasil_penyampaian = 'belum_pengetesan' AND hasil_bacaan = 'belum_pengetesan' THEN
+    final_hasil := 'belum_pengetesan';
+  ELSIF hasil_penyampaian = 'lulus' AND hasil_bacaan = 'lulus' THEN
+    final_hasil := 'lulus';
+  ELSIF hasil_penyampaian = 'lulus' AND hasil_bacaan = 'tidak_lulus' THEN
+    final_hasil := 'tidak_lulus';
+  ELSIF hasil_penyampaian = 'tidak_lulus' AND hasil_bacaan = 'lulus' THEN
+    final_hasil := 'tidak_lulus';
+  ELSIF hasil_penyampaian = 'tidak_lulus' AND hasil_bacaan = 'tidak_lulus' THEN
+    final_hasil := 'tidak_lulus';
+  ELSIF hasil_penyampaian = 'lulus' AND hasil_bacaan = 'perlu_musyawarah' THEN
+    final_hasil := 'perlu_musyawarah';
+  ELSIF hasil_penyampaian = 'tidak_lulus' AND hasil_bacaan = 'perlu_musyawarah' THEN
+    final_hasil := 'tidak_lulus';
+  ELSIF hasil_bacaan = 'belum_pengetesan' THEN
+    final_hasil := 'belum_pengetesan_bacaan';
+  ELSIF hasil_penyampaian = 'belum_pengetesan' THEN
+    final_hasil := 'belum_pengetesan_penyampaian';
+  ELSE
+    final_hasil := 'perlu_musyawarah';
+  END IF;
+
+  UPDATE saringan_peserta 
+  SET hasil_tes_penyampaian = hasil_penyampaian, 
+      hasil_tes_bacaan = hasil_bacaan, 
+      hasil_tes = final_hasil,
+      updated_at = NOW()
+  WHERE id = _peserta_id 
+  RETURNING * INTO peserta_row;
+
+  RETURN jsonb_build_object('deleted', to_jsonb(deleted_row), 'peserta', to_jsonb(peserta_row));
 END;
 $$;

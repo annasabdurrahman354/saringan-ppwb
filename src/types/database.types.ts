@@ -38,6 +38,7 @@ export interface Peserta {
   daerah_kiriman: string | null;
   pendidikan: string | null;
   jurusan: string | null;
+  kelas: 'saringan' | 'bacaan' | 'penyampaian';
   hasil_tes_penyampaian: 'lulus' | 'tidak_lulus' | 'belum_pengetesan';
   hasil_tes_bacaan: 'lulus' | 'tidak_lulus' | 'perlu_musyawarah' | 'belum_pengetesan';
   hasil_tes: 'lulus' | 'tidak_lulus' | 'perlu_musyawarah' | 'belum_pengetesan_bacaan' | 'belum_pengetesan_penyampaian' | 'belum_pengetesan';

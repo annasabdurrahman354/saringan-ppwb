@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Peserta, NilaiBacaan, NilaiPenyampaian, User } from '@/types/database.types';
-import { calculateAge, formatDate, getHasilLabel, getStatusColor } from '@/lib/helpers';
+import { calculateAge, formatDate, getHasilLabel, getStatusColor, getKelasLabel } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -187,6 +187,10 @@ export const DetailPesertaPage = () => {
                 <div>
                   <p className="text-sm text-gray-500">Jurusan</p>
                   <p className="font-medium">{peserta.jurusan || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Kelas</p>
+                  <p className="font-medium">{getKelasLabel(peserta.kelas)}</p>
                 </div>
               </div>
             </div>

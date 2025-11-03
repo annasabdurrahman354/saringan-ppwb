@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Peserta, NilaiBacaan, User } from '@/types/database.types';
-import { calculateAge, formatDate } from '@/lib/helpers';
+import { calculateAge, formatDate, getKelasLabel, getKelasBadgeClass } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -185,8 +185,16 @@ export const NilaiBacaanPage = () => {
                   {peserta.jenis_kelamin}
                 </Badge>
               </div>
-              <p className="text-sm text-gray-600">Usia: {calculateAge(peserta.tanggal_lahir)} tahun</p>
-              <p className="text-sm text-gray-600">{peserta.daerah_sambung || '-'}</p>
+              <div className='flex flex-col gap-0.5'>
+                <p className="text-sm text-gray-600">Usia: {calculateAge(peserta.tanggal_lahir)} tahun</p>
+                <p className="text-sm text-gray-600">{peserta.daerah_sambung || '-'}</p>
+                <p className="text-sm text-gray-600">
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${getKelasBadgeClass(peserta.kelas)}`}>
+                    {getKelasLabel(peserta.kelas)}
+                  </span>
+                </p>
+              </div>
+              
             </div>
           </div>
         </CardContent>

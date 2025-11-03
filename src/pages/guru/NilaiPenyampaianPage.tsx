@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Peserta, NilaiPenyampaian, User } from '@/types/database.types';
-import { calculateAge, formatDate } from '@/lib/helpers';
+import { calculateAge, formatDate, getKelasLabel, getKelasBadgeClass } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -164,6 +164,11 @@ export const NilaiPenyampaianPage = () => {
               </div>
               <p className="text-sm text-gray-600">Usia: {calculateAge(peserta.tanggal_lahir)} tahun</p>
               <p className="text-sm text-gray-600">{peserta.daerah_sambung || '-'}</p>
+              <p className="text-sm text-gray-600">
+                <span className={`px-2 py-1 rounded text-xs font-medium ${getKelasBadgeClass(peserta.kelas)}`}>
+                  Kelas: {getKelasLabel(peserta.kelas)}
+                </span>
+              </p>
             </div>
           </div>
         </CardContent>

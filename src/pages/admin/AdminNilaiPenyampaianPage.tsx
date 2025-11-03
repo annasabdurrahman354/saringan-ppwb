@@ -6,8 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/helpers';
-import { Search } from 'lucide-react';
+import { Search, Trash2 } from 'lucide-react';
 
 interface NilaiWithRelations extends NilaiPenyampaian {
   peserta: Peserta;
@@ -20,6 +22,7 @@ export const AdminNilaiPenyampaianPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedPeriode, setSelectedPeriode] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [deleting, setDeleting] = useState<string>('');
 
   useEffect(() => {
     fetchData();
@@ -83,6 +86,27 @@ export const AdminNilaiPenyampaianPage = () => {
     n.guru?.nama.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleDeleteNilai = async (nilaiId: string) => {
+    try {
+      setDeleting(nilaiId);
+      const { data, error } = await supabase.rpc('hapus_nilai_penyampaian', {
+        _id: nilaiId
+      });
+
+      if (error) throw error;
+      
+      // Refresh the nilai list after successful deletion
+      await fetchNilai();
+      
+      console.log('Nilai penyampaian berhasil dihapus:', data);
+    } catch (error) {
+      console.error('Error deleting nilai penyampaian:', error);
+      alert('Gagal menghapus nilai penyampaian. Silakan coba lagi.');
+    } finally {
+      setDeleting('');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -138,12 +162,13 @@ export const AdminNilaiPenyampaianPage = () => {
                 <TableHead>Rata-rata</TableHead>
                 <TableHead>Materi</TableHead>
                 <TableHead>Tanggal</TableHead>
+                <TableHead>Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredNilai.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-gray-500">
+                  <TableCell colSpan={10} className="text-center text-gray-500">
                     Tidak ada data nilai penyampaian
                   </TableCell>
                 </TableRow>
@@ -159,6 +184,39 @@ export const AdminNilaiPenyampaianPage = () => {
                     <TableCell className="font-semibold">{calculateAverage(nilai)}</TableCell>
                     <TableCell>{nilai.materi || '-'}</TableCell>
                     <TableCell>{formatDate(nilai.created_at)}</TableCell>
+                    <TableCell>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-600"
+                            disabled={deleting === nilai.id}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Konfirmasi Penghapusan</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Apakah Anda yakin ingin menghapus nilai penyampaian untuk {nilai.peserta?.nama}?
+                              Tindakan ini tidak dapat dibatalkan dan akan mempengaruhi hasil tes peserta.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Batal</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteNilai(nilai.id)}
+                              className="bg-red-600 hover:bg-red-700"
+                              disabled={deleting === nilai.id}
+                            >
+                              {deleting === nilai.id ? 'Menghapus...' : 'Hapus'}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -217,6 +275,39 @@ export const AdminNilaiPenyampaianPage = () => {
                   <div>
                     <p className="text-sm text-gray-500">Tanggal</p>
                     <p className="font-medium">{formatDate(nilai.created_at)}</p>
+                  </div>
+                  <div className="flex justify-end pt-2">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-600"
+                          disabled={deleting === nilai.id}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Konfirmasi Penghapusan</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Apakah Anda yakin ingin menghapus nilai penyampaian untuk {nilai.peserta?.nama}?
+                            Tindakan ini tidak dapat dibatalkan dan akan mempengaruhi hasil tes peserta.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Batal</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteNilai(nilai.id)}
+                            className="bg-red-600 hover:bg-red-700"
+                            disabled={deleting === nilai.id}
+                          >
+                            {deleting === nilai.id ? 'Menghapus...' : 'Hapus'}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </div>

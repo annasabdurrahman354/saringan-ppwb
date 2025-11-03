@@ -9,9 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw, Search, User, MapPin, GraduationCap, Phone } from 'lucide-react';
+import { RefreshCw, Search, User, MapPin, GraduationCap, Phone, Edit } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { getHasilLabel } from '@/lib/helpers';
+import { getHasilLabel, getKelasLabel, getKelasBadgeClass } from '@/lib/helpers';
 
 export const AdminPesertaPage = () => {
   const [pesertaList, setPesertaList] = useState<Peserta[]>([]);
@@ -22,6 +22,9 @@ export const AdminPesertaPage = () => {
   const [selectedPeriode, setSelectedPeriode] = useState<string>('');
   const [syncPeriode, setSyncPeriode] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingPeserta, setEditingPeserta] = useState<Peserta | null>(null);
+  const [editFormData, setEditFormData] = useState<{kelas: 'saringan' | 'bacaan' | 'penyampaian'}>({kelas: 'saringan'});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -90,67 +93,63 @@ export const AdminPesertaPage = () => {
       if (!response.ok) throw new Error('Gagal mengambil data dari API');
 
       const apiData: ApiStudent[] = await response.json();
-      let successCount = 0;
-      let errorCount = 0;
+      
+      console.log('Total API data:', apiData.length);
 
-      for (const student of apiData) {
-        try {
-          const pesertaData = {
-            periode_id: syncPeriode,
-            nispn: student.nispn,
-            nama: student.nama,
-            nama_panggilan: student.nama,
-            jenis_kelamin: student.jenis_kelamin as 'L' | 'P',
-            rfid: student.rfid || null,
-            nomor_identitas: student.nik || null,
-            foto: student.foto_siswa || null,
-            nama_ayah: student.nama_ayah || null,
-            nama_ibu: student.nama_ibu || null,
-            tempat_lahir: student.tempat_lahir || null,
-            tanggal_lahir: student.tanggal_lahir || null,
-            alamat_lengkap: student.alamat_lengkap || null,
-            daerah_sambung: student.daerah_sambung || null,
-            desa_sambung: student.desa_sambung || null,
-            kelompok_sambung: student.kelompok_sambung || null,
-            status_mondok: student.status_mondok || null,
-            daerah_kiriman: student.daerah_kiriman || null,
-            pendidikan: student.pendidikan || null,
-            jurusan: student.jurusan || null,
-            pembinaan: false
-          };
-
-          const { data: existingData } = await supabase
-            .from('saringan_peserta')
-            .select('id')
-            .eq('periode_id', syncPeriode)
-            .eq('nispn', student.nispn)
-            .maybeSingle();
-
-          if (existingData) {
-            const { error } = await supabase
-              .from('saringan_peserta')
-              .update({ ...pesertaData, updated_at: new Date().toISOString() })
-              .eq('id', existingData.id);
-
-            if (error) throw error;
-          } else {
-            const { error } = await supabase
-              .from('saringan_peserta')
-              .insert(pesertaData);
-
-            if (error) throw error;
-          }
-
-          successCount++;
-        } catch (error) {
-          console.error('Error syncing student:', student.nispn, error);
-          errorCount++;
+      // Helper function to convert date from DD-MM-YYYY to YYYY-MM-DD
+      const convertDate = (dateStr: string | null): string | null => {
+        if (!dateStr) return null;
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+          const [day, month, year] = parts;
+          return `${year}-${month}-${day}`;
         }
+        return dateStr; // Return as is if format is unexpected
+      };
+
+      // Prepare all data for upsert
+      const pesertaDataList = apiData.map(student => ({
+        periode_id: syncPeriode,
+        nispn: student.nispn,
+        nama: student.nama,
+        nama_panggilan: student.nama,
+        jenis_kelamin: student.jenis_kelamin as 'L' | 'P',
+        rfid: student.rfid || null,
+        nomor_identitas: student.nik || null,
+        foto: student.foto_siswa || null,
+        nama_ayah: student.nama_ayah || null,
+        nama_ibu: student.nama_ibu || null,
+        tempat_lahir: student.tempat_lahir || null,
+        tanggal_lahir: convertDate(student.tanggal_lahir),
+        alamat_lengkap: student.alamat_lengkap || null,
+        daerah_sambung: student.daerah_sambung || null,
+        desa_sambung: student.desa_sambung || null,
+        kelompok_sambung: student.kelompok_sambung || null,
+        status_mondok: student.status_mondok || null,
+        daerah_kiriman: student.daerah_kiriman || null,
+        pendidikan: student.pendidikan || null,
+        jurusan: student.jurusan || null,
+        kelas: 'saringan',
+      }));
+
+      // Upsert all data in one operation
+      const { error, count } = await supabase
+        .from('saringan_peserta')
+        .upsert(pesertaDataList, {
+          onConflict: 'periode_id,nispn',
+          ignoreDuplicates: false
+        });
+
+      if (error) {
+        console.error('Upsert error:', error);
+        throw error;
       }
+
+      console.log('Upsert success, count:', count);
 
       toast({
         title: 'Sinkronisasi Selesai',
-        description: `Berhasil: ${successCount}, Gagal: ${errorCount}`,
+        description: `Berhasil menyinkronkan ${apiData.length} data peserta`,
       });
 
       setSyncDialogOpen(false);
@@ -158,6 +157,7 @@ export const AdminPesertaPage = () => {
         fetchPeserta();
       }
     } catch (error: any) {
+      console.error('Sync error:', error);
       toast({
         title: 'Gagal',
         description: error.message || 'Terjadi kesalahan saat sinkronisasi',
@@ -172,6 +172,41 @@ export const AdminPesertaPage = () => {
     p.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.nispn.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleEditPeserta = (peserta: Peserta) => {
+    setEditingPeserta(peserta);
+    setEditFormData({ kelas: peserta.kelas });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingPeserta) return;
+
+    try {
+      const { error } = await supabase
+        .from('saringan_peserta')
+        .update({ kelas: editFormData.kelas })
+        .eq('id', editingPeserta.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Berhasil',
+        description: 'Kelas peserta berhasil diperbarui',
+      });
+
+      setEditDialogOpen(false);
+      setEditingPeserta(null);
+      fetchPeserta();
+    } catch (error: any) {
+      console.error('Error updating peserta:', error);
+      toast({
+        title: 'Gagal',
+        description: error.message || 'Gagal memperbarui kelas peserta',
+        variant: 'destructive',
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -269,24 +304,43 @@ export const AdminPesertaPage = () => {
                         {peserta.nama.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
+                    <div className="flex-1">
                       <CardTitle className="text-base font-semibold text-gray-900">
                         {peserta.nama}
                       </CardTitle>
                       <p className="text-sm text-gray-600 font-mono">{peserta.nispn}</p>
                     </div>
                   </div>
-                  <Badge
-                    variant={peserta.jenis_kelamin === 'L' ? 'default' : 'secondary'}
-                    className={peserta.jenis_kelamin === 'L' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'}
-                  >
-                    {peserta.jenis_kelamin}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditPeserta(peserta)}
+                      className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Badge
+                      variant={peserta.jenis_kelamin === 'L' ? 'default' : 'secondary'}
+                      className={peserta.jenis_kelamin === 'L' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'}
+                    >
+                      {peserta.jenis_kelamin}
+                    </Badge>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
                 {/* Status Information */}
                 <div className="flex items-center gap-6">
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Kelas</p>
+                    <Badge
+                      variant="outline"
+                      className={`${getKelasBadgeClass(peserta.kelas)} border-0`}
+                    >
+                      {getKelasLabel(peserta.kelas)}
+                    </Badge>
+                  </div>
                   <div className="space-y-1">
                     <p className="text-xs text-gray-500 uppercase tracking-wide">Status Tes</p>
                     <Badge
@@ -406,6 +460,63 @@ export const AdminPesertaPage = () => {
                 )}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="h-5 w-5 text-blue-600" />
+              Edit Kelas Peserta
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {editingPeserta && (
+              <div className="space-y-4">
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-sm font-medium text-gray-900">{editingPeserta.nama}</p>
+                  <p className="text-sm text-gray-600">{editingPeserta.nispn}</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Kelas</label>
+                  <Select
+                    value={editFormData.kelas}
+                    onValueChange={(value: 'saringan' | 'bacaan' | 'penyampaian') =>
+                      setEditFormData({ ...editFormData, kelas: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih kelas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="saringan">Saringan</SelectItem>
+                      <SelectItem value="bacaan">Bacaan</SelectItem>
+                      <SelectItem value="penyampaian">Penyampaian</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => setEditDialogOpen(false)}
+                    className="w-full sm:w-auto"
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    onClick={handleSaveEdit}
+                    className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Simpan
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

@@ -44,3 +44,21 @@ export const getStatusColor = (status: string): string => {
   };
   return colors[status] || 'bg-gray-100 text-gray-800';
 };
+
+export const getKelasLabel = (kelas: string): string => {
+  const labels: Record<string, string> = {
+    'saringan': 'Saringan',
+    'bacaan': 'Bacaan',
+    'penyampaian': 'Penyampaian',
+  };
+  return labels[kelas] || kelas;
+};
+
+export const getKelasBadgeClass = (kelas: string): string => {
+  const classes: Record<string, string> = {
+    'saringan': 'bg-blue-100 text-blue-800',
+    'bacaan': 'bg-red-100 text-red-800',
+    'penyampaian': 'bg-red-100 text-red-800',
+  };
+  return classes[kelas] || 'bg-gray-100 text-gray-800';
+};

@@ -105,7 +105,7 @@ export const AdminUserPage = () => {
         toast({ title: 'Berhasil', description: 'User berhasil diupdate' });
       } else {
         const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: `${formData.username}@saringan.ppwb.my.id`,
+          email: `${formData.username}@ppwb.my.id`,
           password: formData.password,
           options: {
             data: {
@@ -123,7 +123,6 @@ export const AdminUserPage = () => {
             role: formData.role,
             username: formData.username,
             aktif: formData.aktif,
-            auth_id: authData.user?.id,
           });
 
         if (userError) throw userError;

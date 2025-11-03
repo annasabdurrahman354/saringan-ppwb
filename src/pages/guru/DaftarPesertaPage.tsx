@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Peserta } from '@/types/database.types';
-import { calculateAge } from '@/lib/helpers';
+import { calculateAge, getKelasLabel, getKelasBadgeClass } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -224,6 +224,11 @@ export const DaftarPesertaPage = () => {
                       </span>
                     </div>
                   )}
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${getKelasBadgeClass(peserta.kelas)}`}>
+                      {getKelasLabel(peserta.kelas)}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Action Indicator */}
