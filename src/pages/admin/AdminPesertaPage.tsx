@@ -9,7 +9,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw, Search, User, MapPin, GraduationCap, Phone, Edit } from 'lucide-react';
+import { RefreshCw, Search, User, MapPin, GraduationCap, Phone, Edit, CheckCircle } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getHasilLabel, getKelasLabel, getKelasBadgeClass } from '@/lib/helpers';
 
@@ -24,7 +34,9 @@ export const AdminPesertaPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingPeserta, setEditingPeserta] = useState<Peserta | null>(null);
-  const [editFormData, setEditFormData] = useState<{kelas: 'saringan' | 'bacaan' | 'penyampaian'}>({kelas: 'saringan'});
+  const [editFormData, setEditFormData] = useState<{ kelas: 'saringan' | 'bacaan' | 'penyampaian' }>({ kelas: 'saringan' });
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -93,7 +105,7 @@ export const AdminPesertaPage = () => {
       if (!response.ok) throw new Error('Gagal mengambil data dari API');
 
       const apiData: ApiStudent[] = await response.json();
-      
+
       console.log('Total API data:', apiData.length);
 
       // Helper function to convert date from DD-MM-YYYY to YYYY-MM-DD
@@ -208,6 +220,67 @@ export const AdminPesertaPage = () => {
     }
   };
 
+  const handleTetapkanHasil = async () => {
+    if (!selectedPeriode) {
+      toast({
+        title: 'Gagal',
+        description: 'Pilih periode terlebih dahulu',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setProcessing(true);
+
+      // Get all peserta for the selected periode
+      const { data: pesertaData, error: fetchError } = await supabase
+        .from('saringan_peserta')
+        .select('id, hasil_tes')
+        .eq('periode_id', selectedPeriode);
+
+      if (fetchError) throw fetchError;
+
+      if (!pesertaData || pesertaData.length === 0) {
+        toast({
+          title: 'Tidak Ada Data',
+          description: 'Tidak ada peserta untuk periode ini',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Update each peserta's status_tes with their hasil_tes
+      const updates = pesertaData.map((peserta) => ({
+        id: peserta.id,
+        status_tes: peserta.hasil_tes,
+      }));
+
+      const { error: updateError } = await supabase
+        .from('saringan_peserta')
+        .upsert(updates, { onConflict: 'id' });
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: 'Berhasil',
+        description: `Berhasil menetapkan hasil untuk ${pesertaData.length} peserta`,
+      });
+
+      setConfirmDialogOpen(false);
+      fetchPeserta();
+    } catch (error: any) {
+      console.error('Error setting hasil:', error);
+      toast({
+        title: 'Gagal',
+        description: error.message || 'Terjadi kesalahan saat menetapkan hasil',
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-64 space-y-4">
@@ -225,13 +298,23 @@ export const AdminPesertaPage = () => {
           <h1 className="text-2xl font-bold text-gray-900">Kelola Peserta</h1>
           <p className="text-gray-600 mt-1">Kelola data peserta dan periode saringan</p>
         </div>
-        <Button
-          onClick={() => setSyncDialogOpen(true)}
-          className="bg-green-700 hover:bg-green-800 w-full sm:w-auto"
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Sinkronisasi Peserta
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button
+            onClick={() => setConfirmDialogOpen(true)}
+            className="bg-red-600 hover:bg-red-700 w-full sm:w-auto"
+            disabled={!selectedPeriode}
+          >
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Tetapkan Hasil
+          </Button>
+          <Button
+            onClick={() => setSyncDialogOpen(true)}
+            className="bg-green-700 hover:bg-green-800 w-full sm:w-auto"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Sinkronisasi Peserta
+          </Button>
+        </div>
       </div>
 
       {/* Filters Section */}
@@ -287,114 +370,112 @@ export const AdminPesertaPage = () => {
           onRefresh={fetchPeserta}
         >
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 pr-4">
-        {filteredPeserta.length === 0 ? (
-          <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
-            <User className="h-12 w-12 text-gray-400 mb-4" />
-            <p className="text-gray-500 text-lg mb-2">Tidak ada data peserta</p>
-            <p className="text-gray-400 text-sm">Coba ubah filter pencarian atau periode</p>
-          </div>
-        ) : (
-          filteredPeserta.map((peserta) => (
-            <Card key={peserta.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-green-100 text-green-800">
-                        {peserta.nama.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <CardTitle className="text-base font-semibold text-gray-900">
-                        {peserta.nama}
-                      </CardTitle>
-                      <p className="text-sm text-gray-600 font-mono">{peserta.nispn}</p>
+            {filteredPeserta.length === 0 ? (
+              <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
+                <User className="h-12 w-12 text-gray-400 mb-4" />
+                <p className="text-gray-500 text-lg mb-2">Tidak ada data peserta</p>
+                <p className="text-gray-400 text-sm">Coba ubah filter pencarian atau periode</p>
+              </div>
+            ) : (
+              filteredPeserta.map((peserta) => (
+                <Card key={peserta.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback className="bg-green-100 text-green-800">
+                            {peserta.nama.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <CardTitle className="text-base font-semibold text-gray-900">
+                            {peserta.nama}
+                          </CardTitle>
+                          <p className="text-sm text-gray-600 font-mono">{peserta.nispn}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditPeserta(peserta)}
+                          className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Badge
+                          variant={peserta.jenis_kelamin === 'L' ? 'default' : 'secondary'}
+                          className={peserta.jenis_kelamin === 'L' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'}
+                        >
+                          {peserta.jenis_kelamin}
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEditPeserta(peserta)}
-                      className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Badge
-                      variant={peserta.jenis_kelamin === 'L' ? 'default' : 'secondary'}
-                      className={peserta.jenis_kelamin === 'L' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'}
-                    >
-                      {peserta.jenis_kelamin}
-                    </Badge>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {/* Status Information */}
-                <div className="flex items-center gap-6">
-                  <div className="space-y-1">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide">Kelas</p>
-                    <Badge
-                      variant="outline"
-                      className={`${getKelasBadgeClass(peserta.kelas)} border-0`}
-                    >
-                      {getKelasLabel(peserta.kelas)}
-                    </Badge>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide">Status Tes</p>
-                    <Badge
-                      variant="outline"
-                      className={`${
-                        peserta.status_tes === 'lulus' ? 'border-green-200 bg-green-50 text-green-800' :
-                        peserta.status_tes === 'tidak_lulus' ? 'border-red-200 bg-red-50 text-red-800' :
-                        'border-blue-200 bg-blue-50 text-blue-800'
-                      }`}
-                    >
-                      {getHasilLabel(peserta.status_tes)}
-                    </Badge>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide">Hasil Tes</p>
-                    <Badge
-                      variant="outline"
-                      className={`${
-                        peserta.hasil_tes === 'lulus' ? 'border-green-200 bg-green-50 text-green-800' :
-                        peserta.hasil_tes === 'tidak_lulus' ? 'border-red-200 bg-red-50 text-red-800' :
-                        peserta.hasil_tes === 'perlu_musyawarah' ? 'border-yellow-200 bg-yellow-50 text-yellow-800' :
-                        'border-gray-200 bg-gray-50 text-gray-800'
-                      }`}
-                    >
-                      {getHasilLabel(peserta.hasil_tes)}
-                    </Badge>
-                  </div>
-                </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {/* Status Information */}
+                    <div className="flex items-center gap-6">
+                      <div className="space-y-1">
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Kelas</p>
+                        <Badge
+                          variant="outline"
+                          className={`${getKelasBadgeClass(peserta.kelas)} border-0`}
+                        >
+                          {getKelasLabel(peserta.kelas)}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Status Tes</p>
+                        <Badge
+                          variant="outline"
+                          className={`${peserta.status_tes === 'lulus' ? 'border-green-200 bg-green-50 text-green-800' :
+                            peserta.status_tes === 'tidak_lulus' ? 'border-red-200 bg-red-50 text-red-800' :
+                              'border-blue-200 bg-blue-50 text-blue-800'
+                            }`}
+                        >
+                          {getHasilLabel(peserta.status_tes)}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Hasil Tes</p>
+                        <Badge
+                          variant="outline"
+                          className={`${peserta.hasil_tes === 'lulus' ? 'border-green-200 bg-green-50 text-green-800' :
+                            peserta.hasil_tes === 'tidak_lulus' ? 'border-red-200 bg-red-50 text-red-800' :
+                              peserta.hasil_tes === 'perlu_musyawarah' ? 'border-yellow-200 bg-yellow-50 text-yellow-800' :
+                                'border-gray-200 bg-gray-50 text-gray-800'
+                            }`}
+                        >
+                          {getHasilLabel(peserta.hasil_tes)}
+                        </Badge>
+                      </div>
+                    </div>
 
-                {/* Additional Information */}
-                <div className="space-y-2 pt-2 border-t border-gray-100">
-                  {peserta.daerah_sambung && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <MapPin className="h-4 w-4 text-gray-400" />
-                      <span>{peserta.daerah_sambung}</span>
+                    {/* Additional Information */}
+                    <div className="space-y-2 pt-2 border-t border-gray-100">
+                      {peserta.daerah_sambung && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <MapPin className="h-4 w-4 text-gray-400" />
+                          <span>{peserta.daerah_sambung}</span>
+                        </div>
+                      )}
+                      {peserta.pendidikan && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <GraduationCap className="h-4 w-4 text-gray-400" />
+                          <span>{peserta.pendidikan}</span>
+                        </div>
+                      )}
+                      {peserta.nomor_identitas && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Phone className="h-4 w-4 text-gray-400" />
+                          <span>{peserta.nomor_identitas}</span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {peserta.pendidikan && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <GraduationCap className="h-4 w-4 text-gray-400" />
-                      <span>{peserta.pendidikan}</span>
-                    </div>
-                  )}
-                  {peserta.nomor_identitas && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Phone className="h-4 w-4 text-gray-400" />
-                      <span>{peserta.nomor_identitas}</span>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </ScrollArea>
       </div>
@@ -520,6 +601,53 @@ export const AdminPesertaPage = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <CheckCircle className="h-5 w-5" />
+              Tetapkan Hasil Pengetesan
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
+              {selectedPeriode && (
+                <div className="space-y-3">
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p className="text-red-800 font-medium">
+                      Anda yakin menetapkan hasil pengetesan saat ini sebagai hasil final status masing-masing peserta saringan periode <span className="font-bold">{selectedPeriode}</span>?
+                    </p>
+                  </div>
+                  <p className="text-gray-600">
+                    Tindakan ini akan mengubah <span className="font-semibold">status tes</span> setiap peserta dengan nilai dari <span className="font-semibold">hasil tes</span> mereka masing-masing.
+                  </p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={processing}>
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleTetapkanHasil}
+              disabled={processing}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {processing ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Memproses...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Ya, Tetapkan Hasil
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
