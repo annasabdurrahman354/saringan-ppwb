@@ -37,6 +37,7 @@ function App() {
               <Route index element={<Navigate to="/admin/periode" replace />} />
               <Route path="periode" element={<AdminPeriodePage />} />
               <Route path="peserta" element={<AdminPesertaPage />} />
+              <Route path="detail/:pesertaId" element={<DetailPesertaPage />} />
               <Route path="nilai-bacaan" element={<AdminNilaiBacaanPage />} />
               <Route path="nilai-penyampaian" element={<AdminNilaiPenyampaianPage />} />
               <Route path="user" element={<AdminUserPage />} />
