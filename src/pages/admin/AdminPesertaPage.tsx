@@ -236,7 +236,7 @@ export const AdminPesertaPage = () => {
       // Get all peserta for the selected periode
       const { data: pesertaData, error: fetchError } = await supabase
         .from('saringan_peserta')
-        .select('id, hasil_tes')
+        .select('id, hasil_tes, nispn, nama')
         .eq('periode_id', selectedPeriode);
 
       if (fetchError) throw fetchError;
@@ -251,8 +251,12 @@ export const AdminPesertaPage = () => {
       }
 
       // Update each peserta's status_tes with their hasil_tes
+      // We must include all NOT NULL columns (periode_id, nispn, nama) for upsert to work
       const updates = pesertaData.map((peserta) => ({
         id: peserta.id,
+        periode_id: selectedPeriode,
+        nispn: peserta.nispn,
+        nama: peserta.nama,
         status_tes: peserta.hasil_tes,
       }));
 
