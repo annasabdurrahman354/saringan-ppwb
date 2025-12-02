@@ -13,6 +13,8 @@ import { AdminPesertaPage } from './pages/admin/AdminPesertaPage';
 import { AdminNilaiBacaanPage } from './pages/admin/AdminNilaiBacaanPage';
 import { AdminNilaiPenyampaianPage } from './pages/admin/AdminNilaiPenyampaianPage';
 import { AdminUserPage } from './pages/admin/AdminUserPage';
+import { PrintHasilPage } from './pages/admin/PrintHasilPage';
+import { PrintHasilSemuaPage } from './pages/admin/PrintHasilSemuaPage';
 import { Toaster } from './components/ui/toaster';
 
 function App() {
@@ -37,11 +39,13 @@ function App() {
               <Route index element={<Navigate to="/admin/periode" replace />} />
               <Route path="periode" element={<AdminPeriodePage />} />
               <Route path="peserta" element={<AdminPesertaPage />} />
-              <Route path="detail/:pesertaId" element={<DetailPesertaPage />} />
               <Route path="nilai-bacaan" element={<AdminNilaiBacaanPage />} />
               <Route path="nilai-penyampaian" element={<AdminNilaiPenyampaianPage />} />
               <Route path="user" element={<AdminUserPage />} />
             </Route>
+            {/* Print pages outside of layout for pure HTML */}
+            <Route path="/admin/print-hasil/:pesertaId" element={<PrintHasilPage />} />
+            <Route path="/admin/print-hasil-semua/:periodeId" element={<PrintHasilSemuaPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
