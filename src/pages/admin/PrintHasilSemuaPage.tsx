@@ -263,8 +263,8 @@ export const PrintHasilSemuaPage = () => {
                             <th>Hasil Penyampaian</th>
                             <th>Hasil Tes</th>
                             <th>Status Tes</th>
-                        </tr>
-                    </thead>
+                        </tr >
+                    </thead >
                     <tbody>
                         {pesertaList.map((peserta, index) => (
                             <tr key={peserta.id}>
@@ -279,18 +279,20 @@ export const PrintHasilSemuaPage = () => {
                             </tr>
                         ))}
                     </tbody>
-                </table>
-            </div>
+                </table >
+            </div >
 
             {/* Individual peserta cards */}
-            {pesertaList.map((peserta) => (
-                <PesertaPrintCard
-                    key={peserta.id}
-                    peserta={peserta}
-                    nilaiBacaan={peserta.nilaiBacaan}
-                    nilaiPenyampaian={peserta.nilaiPenyampaian}
-                />
-            ))}
+            {
+                pesertaList.map((peserta) => (
+                    <PesertaPrintCard
+                        key={peserta.id}
+                        peserta={peserta}
+                        nilaiBacaan={peserta.nilaiBacaan}
+                        nilaiPenyampaian={peserta.nilaiPenyampaian}
+                    />
+                ))
+            }
         </>
     );
 };
