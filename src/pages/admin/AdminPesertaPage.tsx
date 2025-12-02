@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Peserta, Periode, ApiStudent } from '@/types/database.types';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw, Search, User, MapPin, GraduationCap, Phone, Edit, CheckCircle } from 'lucide-react';
+import { RefreshCw, Search, User, MapPin, GraduationCap, Phone, Edit, CheckCircle, Printer } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,7 +24,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { getHasilLabel, getKelasLabel, getKelasBadgeClass } from '@/lib/helpers';
 
 export const AdminPesertaPage = () => {
-  const navigate = useNavigate();
   const [pesertaList, setPesertaList] = useState<Peserta[]>([]);
   const [periodeList, setPeriodeList] = useState<Periode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -310,6 +308,14 @@ export const AdminPesertaPage = () => {
             Tetapkan Hasil
           </Button>
           <Button
+            onClick={() => window.open(`/admin/print-hasil-semua/${selectedPeriode}`, '_blank')}
+            className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
+            disabled={!selectedPeriode}
+          >
+            <Printer className="h-4 w-4 mr-2" />
+            Cetak Semua
+          </Button>
+          <Button
             onClick={() => setSyncDialogOpen(true)}
             className="bg-green-700 hover:bg-green-800 w-full sm:w-auto"
           >
@@ -380,11 +386,7 @@ export const AdminPesertaPage = () => {
               </div>
             ) : (
               filteredPeserta.map((peserta) => (
-                <Card
-                  key={peserta.id}
-                  className="hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => navigate(`/admin/detail/${peserta.id}`)}
-                >
+                <Card key={peserta.id} className="hover:shadow-md transition-shadow">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
@@ -404,10 +406,15 @@ export const AdminPesertaPage = () => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditPeserta(peserta);
-                          }}
+                          onClick={() => window.open(`/admin/print-hasil/${peserta.id}`, '_blank')}
+                          className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                        >
+                          <Printer className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditPeserta(peserta)}
                           className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                         >
                           <Edit className="h-4 w-4" />
